@@ -28,7 +28,7 @@ function kindsBlock(kinds: Kind[]): string {
       const fields = k.fields
         .map((f) =>
           f.type === "items"
-            ? `items: [{name, servings, calories, protein_g, carbs_g?, fat_g?}]`
+            ? `items: [{name, servings, calories, protein_g, carbs_g?, fat_g?}] where the numbers are TOTALS for that line (all servings: 3 eggs = calories 216)`
             : `${f.key}${f.type === "rating10" ? " (1-10)" : f.type === "time" ? " (HH:MM)" : ""}${f.unit ? ` (${f.unit})` : ""}`,
         )
         .join(", ");
@@ -65,7 +65,7 @@ function instructions(kinds: Kind[]): string {
     "- Confirm with one short sentence, like \"Logged: two eggs, toast, coffee.\" No numbers unless he asks, and no follow-up questions just to fill in fields.",
     "- No opinions, advice, judgments, or commentary on patterns. When he asks about his log, answer with facts only.",
     "- `said` = Phil's own words, verbatim as you heard them. `summary` = a short display line in his terms (\"2 eggs, toast, coffee\").",
-    "- Food: split into items with servings, and estimate calories and protein (carbs and fat too when easy). Pick a fitting emoji (🍳, 🥪, 🍝, ☕).",
+    "- Food: split into items with servings, and estimate calories and protein (carbs and fat too when easy). Item numbers are totals for the whole line (6 eggs → calories 430), not per serving. Pick a fitting emoji (🍳, 🥪, 🍝, ☕).",
     "- Sleep: one `sleep` entry with bedtime, wake and rested (1-10) when he says them. Its time is when he woke up.",
     "- Times: pass `time` as local 24-hour HH:MM when he says when something happened; leave it out for \"just now\". Pass `date` only if it wasn't today.",
     "- Corrections (\"actually it was three eggs\"): find the entry with `get_log`, fix it with `update_entry`, then read back the change in one sentence.",
@@ -269,6 +269,40 @@ export async function buildMcpServer(env: Env): Promise<McpServer> {
           `Saved ${food.name} (per ${food.serving}): ${JSON.stringify(food.nutrition)}${food.verified ? ", verified" : ", estimate"}. ` +
             `Updated ${updatedEntries} past ${updatedEntries === 1 ? "entry" : "entries"}.`,
         );
+      }),
+  );
+
+  // Compatibility: the spike's tool names. Claude can cache a connector's tool list, so a client
+  // that still only knows these must not fail. Saves a note and asks for a connector refresh.
+  const REFRESH_HINT =
+    "Tell Phil in one short sentence: LifeLog was upgraded, so he should remove and re-add the LifeLog connector " +
+    "(Customize > Connectors) to get the new tools.";
+  server.registerTool(
+    "log_test_note",
+    {
+      title: "Log a note (old)",
+      description: "Older LifeLog tool kept for compatibility; saves a plain note. If `log` is available, use `log` instead.",
+      inputSchema: { text: z.string().min(1).max(2000) },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ text: t }) =>
+      guard(async () => {
+        const e = await createEntry(env.DB, { kind: "note", summary: t.trim(), said: t.trim(), source: "voice" });
+        return text(`Saved as a note: ${entryLine(e, kinds)}\n\n${REFRESH_HINT}`);
+      }),
+  );
+  server.registerTool(
+    "list_test_notes",
+    {
+      title: "Read LifeLog (old)",
+      description: "Older LifeLog tool kept for compatibility. If `get_log` is available, use `get_log` instead.",
+      inputSchema: { limit: z.number().int().min(1).max(50).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async () =>
+      guard(async () => {
+        const list = await listEntries(env.DB, { from: addDays(today(), -1), to: today() });
+        return text(`${list.map((e) => `${fmtDay(e.day)} ${entryLine(e, kinds)}`).join("\n") || "Nothing logged today or yesterday."}\n\n${REFRESH_HINT}`);
       }),
   );
 
