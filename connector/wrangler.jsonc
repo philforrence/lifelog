@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lifelog",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "vars": {
+    "GOOGLE_CLIENT_ID": "205553819526-t0rlpa1omlc3qk4qdafprsum22ma3pi1.apps.googleusercontent.com",
+    "SITE_ORIGINS": "https://philforrence.github.io,http://localhost:8080"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lifelog",
+      "database_id": "938526c4-b24e-4a7b-b704-60b27471d72d",
+      "migrations_dir": "migrations"
+    }
+  ]
+  // Secrets (not in this file, see .secrets/secrets.json): MCP_TOKEN, SESSION_SECRET, ALLOWED_EMAILS.
+}
