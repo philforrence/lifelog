@@ -28,7 +28,8 @@ A voice-first log of your life. Whenever something happens, you talk to Claude i
 - **The bridge:** a small remote MCP server (custom connector) on Cloudflare Workers' free tier, with Cloudflare D1 (SQLite) for storage.
   - Voice mode → connector tools → D1.
   - Dashboard → the same Worker's API → D1. It only answers to your Google sign-in.
-- **Connector sign-in:** claude.ai custom connectors use OAuth. Only your Google account can authorize it, so nobody else's Claude can write to your log.
+- **Connector sign-in (changed in the build):** the connector is locked by a long secret code in its address ("No sign-in" in Claude), not OAuth. It's what passed the voice test, and it's equally private as long as the address stays secret. OAuth through Google is a possible upgrade.
+- **Dashboard sign-in:** Google sign-in reusing the Sixers Seats OAuth client, which already allows philforrence.github.io. The Worker checks the Google token and the email allowlist, then issues a 30-day LifeLog session.
 - **Rested scale:** 1–10.
 - **Day boundary:** a day runs until 4 a.m., so a 1 a.m. snack counts toward the day before. Sleep belongs to the day you wake up.
 - **Timezone:** America/New_York. Times are whatever you say ("I had lunch around 12:30"); otherwise the time you logged it.
@@ -39,8 +40,13 @@ A voice-first log of your life. Whenever something happens, you talk to Claude i
   - `entries`: id, timestamp, day, kind, your words, a flexible data field, and where it came from (voice or site).
   - `kinds`: name, icon, label, field hints, and how its tile adds up.
   - `foods`: name, aliases, nutrition per serving, and estimated vs. verified.
-  - Seeded kinds are sleep, food, exercise, rested, and note. Every other kind is created at runtime.
-- **Connector tools (draft):** `log`, `update_entry`, `delete_entry`, `get_day`, `search`, `list_kinds`, `create_kind`, `save_food`.
+  - Seeded kinds are sleep (with rested 1–10), food, exercise, and note. Every other kind is created at runtime.
+- **Connector tools (built):** `log`, `get_log`, `update_entry`, `delete_entry`, `create_kind`, `save_food`. The current kinds and food library are listed inside the `log` tool's description, so Claude doesn't need a separate lookup.
+
+## Status (2026-11-10)
+
+- The spike passed: a note saved through the connector arrived in D1. It hasn't been confirmed whether that note came from voice or typing.
+- v1 is built and deployed: the Worker at lifelog.philforrence.workers.dev and the dashboard at philforrence.github.io/lifelog.
 
 ## Build order
 
